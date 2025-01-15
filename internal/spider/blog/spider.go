@@ -1,31 +1,39 @@
-package main
+package spider
 
 import (
-	"fmt"
+	"context"
+	"log"
 	"time"
 
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 )
 
-func main() {
-	// 创建一个新的 Collector
-	c := colly.NewCollector()
+type Spider struct{}
 
-	// 处理错误
-	c.OnError(func(_ *colly.Response, err error) {
-		fmt.Println("Error:", err)
-	})
+func NewSpider() *Spider {
+	return &Spider{}
+}
+
+func (s *Spider) Run(ctx context.Context) error {
+	c := colly.NewCollector()
 
 	var blogTitles []string
 
-	// 设置请求超时
 	c.SetRequestTimeout(30 * time.Second)
 
-	// 等待 class 为 "other-project-text" 的元素出现
+	// 设置回调函数
 	c.OnHTML("div.date-title", func(e *colly.HTMLElement) {
 		title := e.ChildText(".title")
 		blogTitles = append(blogTitles, title)
 	})
+
+	// 启动爬虫
+	err := c.Visit("https://sakurazaka46.com/s/s46/diary/blog/list?ima=0000")
+	if err != nil {
+		return err
+	}
+
+	log.Println("Spider is running...")
 
 	c.OnScraped(func(r *colly.Response) {
 		// 爬取结束后，在这里可以对获取到的所有博客链接进行处理，比如打印或者存储等
@@ -34,6 +42,5 @@ func main() {
 		}
 	})
 
-	// 访问目标页面
-	c.Visit("https://sakurazaka46.com/s/s46/diary/blog/list?ima=0000")
+	return nil
 }
