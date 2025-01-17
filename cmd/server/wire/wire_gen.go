@@ -7,6 +7,8 @@
 package wire
 
 import (
+	"github.com/google/wire"
+	"github.com/spf13/viper"
 	"sakura/internal/handler"
 	"sakura/internal/job"
 	"sakura/internal/repository"
@@ -17,8 +19,6 @@ import (
 	"sakura/pkg/log"
 	"sakura/pkg/server/http"
 	"sakura/pkg/sid"
-	"github.com/google/wire"
-	"github.com/spf13/viper"
 )
 
 // Injectors from wire.go:

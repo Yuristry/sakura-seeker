@@ -6,7 +6,6 @@ package wire
 import (
 	"sakura/internal/repository"
 	"sakura/internal/server"
-	spider "sakura/internal/spider/blog"
 	"sakura/internal/task"
 	"sakura/pkg/app"
 	"sakura/pkg/log"
@@ -27,8 +26,6 @@ var repositorySet = wire.NewSet(
 var taskSet = wire.NewSet(
 	task.NewTask,
 	task.NewUserTask,
-	spider.NewSpider,
-	spider.NewNewsSpider,
 )
 
 var serverSet = wire.NewSet(

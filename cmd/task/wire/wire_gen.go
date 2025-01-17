@@ -7,15 +7,14 @@
 package wire
 
 import (
+	"github.com/google/wire"
+	"github.com/spf13/viper"
 	"sakura/internal/repository"
 	"sakura/internal/server"
-	"sakura/internal/spider/blog"
 	"sakura/internal/task"
 	"sakura/pkg/app"
 	"sakura/pkg/log"
 	"sakura/pkg/sid"
-	"github.com/google/wire"
-	"github.com/spf13/viper"
 )
 
 // Injectors from wire.go:
@@ -40,7 +39,7 @@ var repositorySet = wire.NewSet(repository.NewDB, repository.NewRepository, repo
 
 var taskSet = wire.NewSet(task.NewTask, task.NewUserTask)
 
-var serverSet = wire.NewSet(server.NewTaskServer, spider.NewSpider)
+var serverSet = wire.NewSet(server.NewTaskServer)
 
 // build App
 func newApp(task2 *server.TaskServer,
