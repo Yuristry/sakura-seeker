@@ -8,9 +8,12 @@ import (
 	"strings"
 
 	"github.com/gocolly/colly/v2"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type Blog struct {
+	ID         uint   `gorm:"primaryKey;autoIncrement"`
 	Author     string // 博客作者
 	Title      string // 博客标题
 	Content    string // 博客内容
@@ -29,6 +32,16 @@ func extractImageURL(styleAttr string) string {
 	return ""
 }
 
+func createDB() *gorm.DB {
+	dsn := "../storage/nunu-test.db?_busy_timeout=5000"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("failed to connect database: %v", err)
+	}
+	db.AutoMigrate(&Blog{})
+	return db
+}
+
 func main() {
 	baseURL := "https://sakurazaka46.com/s/s46/diary/blog/list?ima=0000&page="
 	var blogs []Blog
@@ -37,7 +50,7 @@ func main() {
 	c := colly.NewCollector(
 		colly.AllowedDomains("sakurazaka46.com"),
 	)
-
+	db := createDB()
 	// 解析博客列表
 	c.OnHTML(".blog-top .com-blog-part .box", func(e *colly.HTMLElement) {
 		blog := Blog{}
@@ -51,8 +64,15 @@ func main() {
 		if !strings.HasPrefix(blog.URL, "https://") {
 			blog.URL = "https://sakurazaka46.com" + blog.URL
 		}
-
-		blogs = append(blogs, blog)
+		var existBlog Blog
+		if result := db.Where("url = ?", blog.URL).First(&existBlog); result.Error == gorm.ErrRecordNotFound {
+			blogs = append(blogs, blog)
+		} else if result.Error == nil {
+			fmt.Printf("Blog already exist: %s\n", blog.URL)
+		} else {
+			fmt.Println("error", result.Error)
+			return
+		}
 	})
 	maxPage := 1
 	// 启动爬取
@@ -75,5 +95,9 @@ func main() {
 		fmt.Printf("Cover Image: %s\n", blog.CoverImage)
 		fmt.Printf("URL: %s\n", blog.URL)
 		fmt.Println("-------------------------------------------------")
+		if err := db.Create(&blog).Error; err != nil {
+			fmt.Println("插入失败")
+			fmt.Println("error is: ", err)
+		}
 	}
 }
