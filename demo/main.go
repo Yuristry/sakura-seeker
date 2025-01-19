@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/gocolly/colly/v2"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -27,14 +27,14 @@ func extractImageURL(styleAttr string) string {
 	re := regexp.MustCompile(`url\((.*?)\)`) // 匹配 `url(...)`
 	match := re.FindStringSubmatch(styleAttr)
 	if len(match) > 1 {
-		return match[1] // 提取 URL
+		return match[1]
 	}
 	return ""
 }
 
 func createDB() *gorm.DB {
-	dsn := "../storage/nunu-test.db?_busy_timeout=5000"
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	dsn := "root:password@tcp(127.0.0.1:3306)/sakura?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}
@@ -42,16 +42,23 @@ func createDB() *gorm.DB {
 	return db
 }
 
+func stopCrawler() {
+	log.Println("Stopping crawler as no new blogs found.")
+}
+
+func tryAlert() {
+	log.Println("New blogs found! Alerting...")
+}
+
 func main() {
 	baseURL := "https://sakurazaka46.com/s/s46/diary/blog/list?ima=0000&page="
 	var blogs []Blog
 
-	// 创建 Colly 收集器
 	c := colly.NewCollector(
 		colly.AllowedDomains("sakurazaka46.com"),
 	)
 	db := createDB()
-	// 解析博客列表
+
 	c.OnHTML(".blog-top .com-blog-part .box", func(e *colly.HTMLElement) {
 		blog := Blog{}
 		blog.Date = strings.TrimSpace(e.ChildText(".date"))             // 日期
@@ -74,16 +81,25 @@ func main() {
 			return
 		}
 	})
-	maxPage := 1
-	// 启动爬取
+	maxPage := 1000
 	for page := 0; page <= maxPage; page++ {
+		fmt.Printf("Try to visit Page %d\n", page)
+		oldNum := len(blogs)
 		err := c.Visit(baseURL + strconv.Itoa(page))
 		if err != nil {
 			log.Fatal("Failed to scrape page:", err)
 		}
+		if len(blogs) == oldNum {
+			stopCrawler()
+			break
+		}
 	}
 
 	fmt.Printf("Total Blogs: %d\n", len(blogs))
+
+	if len(blogs) != 0 {
+		tryAlert()
+	}
 
 	// 打印结果
 	for _, blog := range blogs {
@@ -96,7 +112,6 @@ func main() {
 		fmt.Printf("URL: %s\n", blog.URL)
 		fmt.Println("-------------------------------------------------")
 		if err := db.Create(&blog).Error; err != nil {
-			fmt.Println("插入失败")
 			fmt.Println("error is: ", err)
 		}
 	}
